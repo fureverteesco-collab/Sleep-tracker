@@ -170,23 +170,71 @@ tSec = 0; document.getElementById('timerBtn').textContent = '⏸ Stop';
 tInt = setInterval(() => {
 tSec++;
 document.getElementById('timerDisp').textContent =
-new Date(tSec * 1000).toISOString().substr(11, 8);
+function playS(type) {
+  if (!aCtx) {
+    aCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  // Stop the previous sound
+  if (osc) {
+    osc.stop();
+    osc.disconnect();
+    osc = null;
+  }
+
+  const gain = aCtx.createGain();
+  gain.connect(aCtx.destination);
+  gain.gain.value = 0.08;
+
+  if (type === 'white') {
+    // True white noise
+    const bufferSize = 2 * aCtx.sampleRate;
+    const buffer = aCtx.createBuffer(1, bufferSize, aCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = aCtx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+    noise.connect(gain);
+    noise.start();
+
+    osc = noise;
+  } else {
+    // Keep the other sounds working for now
+    osc = aCtx.createOscillator();
+
+    const types = {
+      rain: 'sawtooth',
+      ocean: 'sine',
+      forest: 'triangle'
+    };
+
+    const freqs = {
+      rain: 200,
+      ocean: 60,
+      forest: 250
+    };
+
+    osc.type = types[type] || 'sine';
+    osc.frequency.value = freqs[type] || 100;
+    osc.connect(gain);
+    osc.start();
+  }
+
+  document.querySelectorAll('.sound-btn')
+    .forEach(b => b.classList.remove('on'));
+
+  event.currentTarget.classList.add('on');
+}new Date(tSec * 1000).toISOString().substr(11, 8);
 }, 1000);
 }
 }
 
-function playS(type) {
-if(!aCtx) aCtx = new (window.AudioContext || window.webkitAudioContext)();
-const osc = aCtx.createOscillator(), gain = aCtx.createGain();
-osc.connect(gain); gain.connect(aCtx.destination);
-const types = {white:'sawtooth', rain:'sawtooth', ocean:'sine', forest:'triangle'};
-const freqs = {white:150, rain:200, ocean:60, forest:250};
-osc.type = types[type] || 'sawtooth';
-osc.frequency.value = freqs[type] || 150;
-gain.gain.value = 0.08;
-osc.start();
-document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('on'));
-event.currentTarget.classList.add('on');
+
 const stop = parseInt(document.getElementById('autoStop').value);
 if(stop > 0) setTimeout(() => osc.stop(), stop * 60000);
 }
